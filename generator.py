@@ -24,7 +24,7 @@ st.title("ReadMe Generator app")
 st.sidebar.title("Choose a model")
 model_name = st.sidebar.selectbox("Choose a model", models_name, index=default_model_index)
 
-user = st.text_area("""Describe your project.
+user = st.text_area("Describe your project.",placeholder="""
 Remeber to generate the best result we highly recommend:
 1. Add your github repo link
 2. A brief description about the project""") # Try to generate many md files and share your experience
