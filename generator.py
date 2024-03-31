@@ -29,7 +29,23 @@ user = st.text_area("Describe your project")
 
 # prompt = "Using Git README best practices, generate ONLY the README.md file on: " + user 
 
-prompt = "Generate a professional and informative README.md file following Git best practices, for project: " + user
+prompt = f"""Act as a programmer and generate a README text for a project. 
+before generating you should try to answer these questions 
+1. which programing langauge does this project use
+2. What is the aim of the project
+3. How to achieve the best results to get the readme text
+Here is a outline of what the text should be like:
+1. Project Title: A brief title for the project.
+2. Description: A detailed description of the project and its purpose.
+3. Installation: Instructions on how to install the project and run it you can check out which programing langauge and frameworks used and how to install them.
+4. Usage: Instructions on how to use the project after installation.
+5. Contributing: Guidelines for how to contribute to the project.
+6. Credits: Acknowledge the authors and contributors of the project.
+7. License: Information about the license.
+The files provided to you please use them to generate the most relevant text for the README file.
+Here is a quick breif about the project also:{user}"""
+
+files = st.file_uploader("Upload a file",accept_multiple_files=True)
 
 # Create a button for the user to generate a README file
 if st.button('Generate'):
