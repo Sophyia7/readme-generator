@@ -27,7 +27,8 @@ model_name = st.sidebar.selectbox("Choose a model", models_name, index=default_m
 user = st.text_area("Describe your project.",placeholder="""
 Remeber to generate the best result we highly recommend:
 1. Add your github repo link
-2. A brief description about the project""") # Try to generate many md files and share your experience
+2. A brief description about the project
+3. Add a logo link for your project""") # Try to generate many md files and share your experience
 
 # prompt = "Using Git README best practices, generate ONLY the README.md file on: " + user 
 
@@ -56,14 +57,15 @@ if st.button('Generate'):
     if file.name.split(".")[-1] not in extensions:
       st.warning(f"File type {file.name.split('.')[-1]} not supported.")
       files.remove(file) # Remove the file from the list of the files because it is not vaild
-      continue
+      metadata = None
+    else:
+      metadata = client.FragmentMetadata(ext=file.name.split(".")[-1])
     try:
       raw = StringIO(file.getvalue().decode("utf-8"))
     except:
       st.warning(f"Error in decoding file {file.name}")
       files.remove(file) # Remove the file from the list of the files because it is not vaild
       continue
-    # TODO use the file instead of the string and if the file not in the extensions use the string instead
     iterable.append(client.RelevantQGPTSeed(
         seed = client.Seed(
             type="SEEDED_ASSET",
@@ -71,23 +73,11 @@ if st.button('Generate'):
                 application=opensource_application,
                 format=client.SeededFormat(
                   fragment = client.SeededFragment(
-                    string = client.TransferableString(
-                           raw = raw.read()
-                    ),
-                    # file = client.SeededFile(
-                    #     string = client.TransferableString(
-                    #       raw = raw.read()
-                    #     ),
-                    #     metadata=client.FileMetadata(
-                    #         name = file.name,
-                    #         ext=file.name.split(".")[-1],
-                    #         size=file.size
-                    #     )
-                    ),
+                    string = client.TransferableString(raw = raw.read()),
+                    metadata=metadata,
                 ),
-            ), 
-        ),
-    ))
+            )))))
+    
   question = client.QGPTQuestionInput(
     query = prompt,  
     relevant = client.RelevantQGPTSeeds(iterable = iterable) if iterable else {"iterable": []},
