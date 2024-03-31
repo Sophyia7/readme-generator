@@ -1,15 +1,14 @@
 import streamlit as st
-import pieces_os_client as client  
 import requests
+from application import client,connect_api,api_client
+from io import StringIO
 
-# AI Client Configuration
-configuration = client.Configuration(host="http://localhost:1000")
-api_client = client.ApiClient(configuration)
-api_instance = client.ModelsApi(api_client)
-
+extensions = [e.value for e in client.ClassificationSpecificEnum]
+opensource_application = connect_api()
+models_api = client.ModelsApi(api_client)
 # Get models from Client
-api_response = api_instance.models_snapshot()
-models = {model.name: model.id for model in api_response.iterable if model.cloud or model.downloading}
+api_response = models_api.models_snapshot()
+models = {model.name: model.id for model in api_response.iterable if model.cloud or model.downloaded}
 
 # Set default model from Client
 default_model_name = "GPT-4 Chat Model"
@@ -25,7 +24,10 @@ st.title("ReadMe Generator app")
 st.sidebar.title("Choose a model")
 model_name = st.sidebar.selectbox("Choose a model", models_name, index=default_model_index)
 
-user = st.text_area("Describe your project")
+user = st.text_area("""Describe your project.
+Remeber to generate the best result we highly recommend:
+1. Add your github repo link
+2. A brief description about the project""") # Try to generate many md files and share your experience
 
 # prompt = "Using Git README best practices, generate ONLY the README.md file on: " + user 
 
@@ -49,14 +51,50 @@ files = st.file_uploader("Upload a file",accept_multiple_files=True)
 
 # Create a button for the user to generate a README file
 if st.button('Generate'):
+  iterable = []
+  for file in files:
+    if file.name.split(".")[-1] not in extensions:
+      st.warning(f"File type {file.name.split('.')[-1]} not supported.")
+      files.remove(file) # Remove the file from the list of the files because it is not vaild
+      continue
+    try:
+      raw = StringIO(file.getvalue().decode("utf-8"))
+    except:
+      st.warning(f"Error in decoding file {file.name}")
+      files.remove(file) # Remove the file from the list of the files because it is not vaild
+      continue
+    # TODO use the file instead of the string and if the file not in the extensions use the string instead
+    iterable.append(client.RelevantQGPTSeed(
+        seed = client.Seed(
+            type="SEEDED_ASSET",
+            asset=client.SeededAsset(
+                application=opensource_application,
+                format=client.SeededFormat(
+                  fragment = client.SeededFragment(
+                    string = client.TransferableString(
+                           raw = raw.read()
+                    ),
+                    # file = client.SeededFile(
+                    #     string = client.TransferableString(
+                    #       raw = raw.read()
+                    #     ),
+                    #     metadata=client.FileMetadata(
+                    #         name = file.name,
+                    #         ext=file.name.split(".")[-1],
+                    #         size=file.size
+                    #     )
+                    ),
+                ),
+            ), 
+        ),
+    ))
   question = client.QGPTQuestionInput(
     query = prompt,  
-    relevant = {"iterable": []}, 
+    relevant = client.RelevantQGPTSeeds(iterable = iterable) if iterable else {"iterable": []},
     model = model_id
   )
 
-  question_json = question.json()
-
+  question_json = question.to_json()
 
    # Send a Prompt request to the /qgpt/question endpoint
   response = requests.post('http://localhost:1000/qgpt/question', data=question_json)
@@ -65,7 +103,7 @@ if st.button('Generate'):
   question_output = client.QGPTQuestionOutput(**response.json())
 
   # Getting the answer
-  answers = question_output.answers.iterable[0].text 
+  answers = question_output.answers.iterable[0].text
   st.write(answers)
   # edited_readme = st.text_area("Edit Your README: ", value=answers)
 
