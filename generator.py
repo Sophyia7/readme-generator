@@ -1,15 +1,14 @@
 import streamlit as st
-import pieces_os_client as client  
 import requests
+from application import client,connect_api,api_client
+from io import StringIO
 
-# AI Client Configuration
-configuration = client.Configuration(host="http://localhost:1000")
-api_client = client.ApiClient(configuration)
-api_instance = client.ModelsApi(api_client)
-
+extensions = [e.value for e in client.ClassificationSpecificEnum]
+opensource_application = connect_api()
+models_api = client.ModelsApi(api_client)
 # Get models from Client
-api_response = api_instance.models_snapshot()
-models = {model.name: model.id for model in api_response.iterable if model.cloud or model.downloading}
+api_response = models_api.models_snapshot()
+models = {model.name: model.id for model in api_response.iterable if model.cloud or model.downloaded}
 
 # Set default model from Client
 default_model_name = "GPT-4 Chat Model"
@@ -25,22 +24,67 @@ st.title("ReadMe Generator app")
 st.sidebar.title("Choose a model")
 model_name = st.sidebar.selectbox("Choose a model", models_name, index=default_model_index)
 
-user = st.text_area("Describe your project")
+user = st.text_area("Describe your project.",placeholder="""
+Remeber to generate the best result we highly recommend:
+1. Add your github repo link
+2. A brief description about the project
+3. Add a logo link for your project""") # Try to generate many md files and share your experience
 
 # prompt = "Using Git README best practices, generate ONLY the README.md file on: " + user 
 
-prompt = "Generate a professional and informative README.md file following Git best practices, for project: " + user
+prompt = f"""Act as a programmer and generate a README text for a project. 
+before generating you should try to answer these questions 
+1. which programing langauge does this project use
+2. What is the aim of the project
+3. How to achieve the best results to get the readme text
+Here is a outline of what the text should be like:
+1. Project Title: A brief title for the project.
+2. Description: A detailed description of the project and its purpose.
+3. Installation: Instructions on how to install the project and run it you can check out which programing langauge and frameworks used and how to install them.
+4. Usage: Instructions on how to use the project after installation.
+5. Contributing: Guidelines for how to contribute to the project.
+6. Credits: Acknowledge the authors and contributors of the project.
+7. License: Information about the license.
+The files provided to you please use them to generate the most relevant text for the README file.
+Here is a quick breif about the project also:{user}"""
+
+files = st.file_uploader("Upload a file",accept_multiple_files=True)
 
 # Create a button for the user to generate a README file
 if st.button('Generate'):
+  iterable = []
+  for file in files:
+    if file.name.split(".")[-1] not in extensions:
+      st.warning(f"File type {file.name.split('.')[-1]} not supported.")
+      files.remove(file) # Remove the file from the list of the files because it is not vaild
+      metadata = None
+    else:
+      metadata = client.FragmentMetadata(ext=file.name.split(".")[-1])
+    try:
+      raw = StringIO(file.getvalue().decode("utf-8"))
+    except:
+      st.warning(f"Error in decoding file {file.name}")
+      files.remove(file) # Remove the file from the list of the files because it is not vaild
+      continue
+    iterable.append(client.RelevantQGPTSeed(
+        seed = client.Seed(
+            type="SEEDED_ASSET",
+            asset=client.SeededAsset(
+                application=opensource_application,
+                format=client.SeededFormat(
+                  fragment = client.SeededFragment(
+                    string = client.TransferableString(raw = raw.read()),
+                    metadata=metadata,
+                ),
+            )))))
+    
   question = client.QGPTQuestionInput(
     query = prompt,  
-    relevant = {"iterable": []}, 
+    relevant = client.RelevantQGPTSeeds(iterable = iterable) if iterable else {"iterable": []},
     model = model_id
   )
 
-  question_json = question.json()
-
+  question_json = question.to_json()
 
    # Send a Prompt request to the /qgpt/question endpoint
   response = requests.post('http://localhost:1000/qgpt/question', data=question_json)
@@ -49,7 +93,7 @@ if st.button('Generate'):
   question_output = client.QGPTQuestionOutput(**response.json())
 
   # Getting the answer
-  answers = question_output.answers.iterable[0].text 
+  answers = question_output.answers.iterable[0].text
   st.write(answers)
   # edited_readme = st.text_area("Edit Your README: ", value=answers)
 
