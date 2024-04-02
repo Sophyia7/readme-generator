@@ -27,15 +27,19 @@ To install the project and run it on your local machine, please follow the steps
     ```bash
     pip install -r requirements.txt
     ```
+4. Currently, Pieces Python SDK is facing an issue to resolve the *validate_email* issue, do this:
+   ```bash
+   pip install --upgrade pydantic
+   ```
 
-4. Run the Streamlit app:
+5. Run the Streamlit app:
     ```bash
     streamlit run generator.py
     ```
 
 ## Usage
 
-To use the README.md generator, simply fill in the fields provided in the Streamlit app and click the 'Generate' button. The app will generate a README.md file based on the information you provided.
+To use the README.md generator, simply provide a well-detailed desciption of your project click the 'Generate' button. The app will generate a README.md file based on the information you provided.
 
 ## Contributing
 
