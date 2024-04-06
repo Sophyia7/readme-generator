@@ -3,6 +3,11 @@ import requests
 from application import client,connect_api,api_client
 from io import StringIO
 
+
+if client.WellKnownApi(api_client).get_well_known_health() != "ok":
+  raise ConnectionError("Please open the pieces server")
+
+
 extensions = [e.value for e in client.ClassificationSpecificEnum]
 opensource_application = connect_api()
 models_api = client.ModelsApi(api_client)
